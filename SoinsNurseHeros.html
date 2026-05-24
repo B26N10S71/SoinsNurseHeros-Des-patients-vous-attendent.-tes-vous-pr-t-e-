@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoinsNurseHeros</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2331;
+    --border: #2a3444;
+    --accent: #00c9a7;
+    --accent2: #0091ff;
+    --danger: #ff4d6d;
+    --warning: #ffd166;
+    --text: #e6edf3;
+    --text-muted: #7d8fa3;
+    --success: #3fb950;
+    --card-radius: 16px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 20%, rgba(0,201,167,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 80% 80%, rgba(0,145,255,0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .game-wrapper { width: 100%; max-width: 680px; padding: 20px; position: relative; z-index: 1; }
+  .screen { display: none; animation: fadeIn 0.5s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .game-header { text-align: center; margin-bottom: 32px; }
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.2rem;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .logo span { font-style: italic; }
+  .tagline { color: var(--text-muted); font-size: 0.85rem; font-weight: 300; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--card-radius); padding: 28px; margin-bottom: 16px; }
+  .card-title { font-family: 'DM Serif Display', serif; font-size: 1.4rem; margin-bottom: 8px; color: var(--text); }
+  .card-sub { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; margin-bottom: 20px; }
+  .char-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .char-card { background: var(--surface2); border: 2px solid var(--border); border-radius: 12px; padding: 24px 16px; text-align: center; cursor: pointer; transition: all 0.25s ease; }
+  .char-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,201,167,0.12); }
+  .char-card.selected { border-color: var(--accent); background: rgba(0,201,167,0.08); }
+  .char-icon { font-size: 3rem; margin-bottom: 10px; }
+  .char-name { font-weight: 600; font-size: 1rem; }
+  .char-desc { color: var(--text-muted); font-size: 0.8rem; margin-top: 4px; }
+  /* SCENARIO MENU */
+  .scenario-menu { display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px; }
+  .scenario-item {
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .scenario-item:hover { border-color: var(--accent); transform: translateX(4px); }
+  .scenario-item.locked { opacity: 0.4; cursor: not-allowed; }
+  .scenario-item.locked:hover { transform: none; border-color: var(--border); }
+  .scenario-item.completed { border-color: var(--success); }
+  .scenario-icon { font-size: 2rem; flex-shrink: 0; }
+  .scenario-info { flex: 1; }
+  .scenario-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 3px; }
+  .scenario-desc { color: var(--text-muted); font-size: 0.82rem; }
+  .scenario-badge-num {
+    background: rgba(0,201,167,0.15);
+    border: 1px solid rgba(0,201,167,0.3);
+    color: var(--accent);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .scenario-badge-num.done { background: rgba(63,185,80,0.15); border-color: rgba(63,185,80,0.3); color: var(--success); }
+  .scenario-badge-num.locked-badge { background: var(--border); border-color: var(--border); color: var(--text-muted); }
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 28px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s ease; width: 100%; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), #00a88a); color: #0d1117; }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,201,167,0.3); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent2); background: rgba(0,145,255,0.08); }
+  /* INTRO */
+  .scenario-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(0,201,167,0.1); border: 1px solid rgba(0,201,167,0.3); border-radius: 20px; padding: 4px 12px; font-size: 0.78rem; font-weight: 500; color: var(--accent); margin-bottom: 16px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .patient-info { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; display: flex; gap: 14px; align-items: center; }
+  .patient-avatar { font-size: 2.5rem; }
+  .patient-detail strong { display: block; font-size: 0.95rem; margin-bottom: 3px; }
+  .patient-detail span { color: var(--text-muted); font-size: 0.85rem; }
+  /* PROGRESS */
+  .progress-bar-wrap { background: var(--surface2); border-radius: 6px; height: 6px; margin-bottom: 20px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 6px; transition: width 0.5s ease; }
+  .step-counter { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .step-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+  .step-num { font-size: 0.85rem; font-weight: 600; color: var(--accent); }
+  /* QUESTION */
+  .question-text { font-family: 'DM Serif Display', serif; font-size: 1.2rem; line-height: 1.5; margin-bottom: 8px; }
+  .question-context { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 20px; line-height: 1.6; }
+  .options-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .option-btn { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 18px; text-align: left; cursor: pointer; transition: all 0.2s ease; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; color: var(--text); display: flex; align-items: center; gap: 12px; }
+  .option-btn:hover:not(:disabled) { border-color: var(--accent2); background: rgba(0,145,255,0.07); transform: translateX(3px); }
+  .option-btn.correct { border-color: var(--success); background: rgba(63,185,80,0.1); color: var(--success); }
+  .option-btn.wrong { border-color: var(--danger); background: rgba(255,77,109,0.1); color: var(--danger); }
+  .option-btn:disabled { cursor: not-allowed; }
+  .option-letter { width: 28px; height: 28px; border-radius: 6px; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; }
+  /* FEEDBACK */
+  .feedback-box { border-radius: 10px; padding: 16px; margin-top: 12px; display: none; animation: fadeIn 0.3s ease; }
+  .feedback-box.show { display: block; }
+  .feedback-box.correct-fb { background: rgba(63,185,80,0.1); border: 1px solid rgba(63,185,80,0.3); }
+  .feedback-box.wrong-fb { background: rgba(255,77,109,0.1); border: 1px solid rgba(255,77,109,0.3); }
+  .feedback-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .feedback-text { font-size: 0.875rem; line-height: 1.6; color: var(--text-muted); }
+  /* SCORE */
+  .score-display { display: flex; gap: 12px; margin-bottom: 20px; }
+  .score-chip { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
+  .score-chip-val { font-family: 'DM Serif Display', serif; font-size: 2rem; display: block; }
+  .score-chip-val.good { color: var(--success); }
+  .score-chip-val.bad { color: var(--danger); }
+  .score-chip-label { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+  .medal { text-align: center; padding: 20px 0; }
+  .medal-icon { font-size: 4rem; margin-bottom: 8px; }
+  .medal-title { font-family: 'DM Serif Display', serif; font-size: 1.6rem; margin-bottom: 6px; }
+  .medal-sub { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; }
+  .steps-recap { margin: 16px 0; }
+  .recap-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.875rem; }
+  .recap-item:last-child { border-bottom: none; }
+  .recap-dot { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; flex-shrink: 0; }
+  .recap-dot.ok { background: rgba(63,185,80,0.2); color: var(--success); }
+  .recap-dot.ko { background: rgba(255,77,109,0.2); color: var(--danger); }
+  .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+  .btn-row .btn { flex: 1; }
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(0,201,167,0.3); } 50% { box-shadow: 0 0 0 8px rgba(0,201,167,0); } }
+  .btn-pulse { animation: pulse 2s infinite; }
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  /* GLOBAL SCORE */
+  .global-score { display: flex; gap: 8px; justify-content: center; margin-bottom: 24px; flex-wrap: wrap; }
+  .gs-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 0.82rem; color: var(--text-muted); }
+  .gs-chip span { color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="game-wrapper">
+
+  <!-- SCREEN 1 : Accueil + choix personnage -->
+  <div class="screen active" id="screen-welcome">
+    <div class="game-header">
+      <div class="logo">Soins<span>Nurse</span>Heros</div>
+      <div class="tagline">Apprendre les soins en jouant</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Choisissez votre personnage</div>
+      <div class="card-sub">Vous incarnerez un(e) professionnel(le) de santé tout au long des scénarios.</div>
+      <div class="char-grid">
+        <div class="char-card" id="char-f" onclick="selectChar('f')">
+          <div class="char-icon">👩‍⚕️</div>
+          <div class="char-name">Infirmière</div>
+          <div class="char-desc">Sophie, IDE expérimentée</div>
+        </div>
+        <div class="char-card" id="char-m" onclick="selectChar('m')">
+          <div class="char-icon">👨‍⚕️</div>
+          <div class="char-name">Infirmier</div>
+          <div class="char-desc">Lucas, IDE en poste</div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-pulse" id="btn-start" onclick="goToMenu()" disabled>
+        ▶ Choisir un scénario
+      </button>
+    </div>
+  </div>
+
+  <!-- SCREEN 2 : Menu scénarios -->
+  <div class="screen" id="screen-menu">
+    <div class="game-header">
+      <div class="logo">Soins<span>Nurse</span>Heros</div>
+      <div class="tagline" id="menu-welcome-name"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Choisissez votre mission</div>
+      <div class="card-sub">4 scénarios médicaux pour apprendre les bons gestes. Complétez-les dans l'ordre.</div>
+      <div class="global-score">
+        <div class="gs-chip">Complétés : <span id="gs-done">0</span>/4</div>
+        <div class="gs-chip">Score total : <span id="gs-total">0</span> pts</div>
+      </div>
+      <div class="scenario-menu" id="scenario-menu"></div>
+    </div>
+  </div>
+
+  <!-- SCREEN 3 : Intro scénario -->
+  <div class="screen" id="screen-intro">
+    <div class="game-header">
+      <div class="logo">Soins<span>Nurse</span>Heros</div>
+    </div>
+    <div class="card" id="intro-card">
+      <!-- rempli dynamiquement -->
+    </div>
+  </div>
+
+  <!-- SCREEN 4 : Questions -->
+  <div class="screen" id="screen-question">
+    <div class="game-header">
+      <div class="logo">Soins<span>Nurse</span>Heros</div>
+    </div>
+    <div class="card">
+      <div class="step-counter">
+        <span class="step-label" id="scenario-label-q">Scénario</span>
+        <span class="step-num" id="step-num">1 / 7</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+      <div class="question-text" id="q-text"></div>
+      <div class="question-context" id="q-context"></div>
+      <div class="options-grid" id="options-grid"></div>
+      <div class="feedback-box" id="feedback-box">
+        <div class="feedback-title" id="feedback-title"></div>
+        <div class="feedback-text" id="feedback-text"></div>
+      </div>
+      <button class="btn btn-primary" id="btn-next" style="display:none;margin-top:14px" onclick="nextQuestion()">
+        Étape suivante →
+      </button>
+    </div>
+  </div>
+
+  <!-- SCREEN 5 : Résultats scénario -->
+  <div class="screen" id="screen-result">
+    <div class="game-header">
+      <div class="logo">Soins<span>Nurse</span>Heros</div>
+    </div>
+    <div class="card">
+      <div class="medal" id="medal-zone"></div>
+      <div class="divider"></div>
+      <div class="score-display">
+        <div class="score-chip">
+          <span class="score-chip-val good" id="res-correct">0</span>
+          <span class="score-chip-label">Bonnes réponses</span>
+        </div>
+        <div class="score-chip">
+          <span class="score-chip-val bad" id="res-wrong">0</span>
+          <span class="score-chip-label">Erreurs</span>
+        </div>
+        <div class="score-chip">
+          <span class="score-chip-val" id="res-score" style="color:var(--accent2)">0</span>
+          <span class="score-chip-label">Score / 100</span>
+        </div>
+      </div>
+      <div class="steps-recap" id="steps-recap"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="replayScenario()">🔄 Rejouer</button>
+        <button class="btn btn-primary" onclick="goToMenu()">← Menu scénarios</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ========== DONNÉES DES SCÉNARIOS ==========
+const scenarios = [
+  {
+    id: 0,
+    icon: '🩹',
+    title: 'Pansement simple',
+    desc: 'Réaliser un pansement propre et sécurisé',
+    patient: { avatar: '🧓', name: 'M. Bernard, 68 ans', info: 'Plaie superficielle au genou droit — Suite à une chute légère' },
+    briefing: 'La plaie est propre, de 3 cm, sans signe d\'infection. Votre rôle : réaliser un pansement simple en respectant les règles d\'hygiène et le protocole.',
+    questions: [
+      { q: "Avant tout soin, quelle est votre première action ?", ctx: "Vous venez d'entrer dans la chambre de M. Bernard. Que faites-vous en priorité ?", options: ["Ouvrir le matériel de pansement","Se laver les mains ou utiliser une solution hydroalcoolique","Enlever le pansement existant","Mettre les gants immédiatement"], correct: 1, explanation: { ok: "Parfait ! Le lavage des mains est le geste barrière n°1. Il réduit de 80% le risque de transmission d'infections nosocomiales.", ko: "La première action est toujours le lavage des mains ou la friction hydroalcoolique, avant tout autre geste. C'est la base de l'hygiène soignante." } },
+      { q: "Vous préparez votre matériel. Que faut-il rassembler ?", ctx: "Vous vous dirigez vers le chariot de soins. Cochez la liste correcte pour un pansement simple.", options: ["Gants stériles, compresses stériles, sérum physiologique, sparadrap, sac poubelle","Gants à usage unique, compresses non stériles, eau du robinet, bandage","Gants stériles, iode, coton, pince à épiler","Aucun matériel particulier, on improvise selon la plaie"], correct: 0, explanation: { ok: "Excellent ! La liste complète inclut gants stériles, compresses stériles, sérum physiologique, sparadrap et sac poubelle DASRI.", ko: "Pour un pansement simple : gants stériles, compresses stériles, sérum physiologique (jamais d'eau du robinet), sparadrap et sac poubelle DASRI." } },
+      { q: "Vous retirez l'ancien pansement. Dans quel sens procédez-vous ?", ctx: "Le pansement précédent est en place. Comment le retirer correctement ?", options: ["En tirant d'un coup sec pour aller vite","En décollant doucement en direction de la plaie, bord par bord","En mouillant abondamment avec de l'eau chaude","En coupant le sparadrap au milieu avec des ciseaux"], correct: 1, explanation: { ok: "Très bien ! On décolle toujours vers la plaie, bord par bord, doucement pour ne pas traumatiser la peau.", ko: "Il faut décoller le pansement doucement, bord par bord, en direction de la plaie. Un arrachage brusque peut traumatiser la peau fragile." } },
+      { q: "Quels signes sur la plaie doivent vous alerter ?", ctx: "La plaie est maintenant visible. Vous l'examinez avant de la nettoyer.", options: ["Une légère rougeur autour, normale en cicatrisation","Rougeur importante, chaleur, gonflement et écoulement purulent","La plaie est sèche, c'est un signe négatif","La présence d'un début de croûte, signe d'infection"], correct: 1, explanation: { ok: "Parfait ! Les 4 signes d'infection : rougeur (rubor), chaleur (calor), gonflement (tumor), douleur (dolor) + écoulement purulent → alerter le médecin.", ko: "Les signes d'infection à surveiller : rougeur marquée, chaleur locale, œdème et écoulement purulent. Ces 4 signes ensemble doivent alerter." } },
+      { q: "Comment nettoyez-vous la plaie ?", ctx: "Aucun signe d'infection. Vous passez au nettoyage de la plaie.", options: ["Avec de l'eau oxygénée pour désinfecter","Avec du sérum physiologique, en tamponnant du centre vers l'extérieur","Avec de l'alcool à 70° pour une désinfection maximale","Avec de l'eau chaude du robinet, c'est suffisant"], correct: 1, explanation: { ok: "Excellent ! Sérum physiologique du centre vers l'extérieur. L'eau oxygénée et l'alcool sont cytotoxiques — ils détruisent les cellules de cicatrisation.", ko: "Sérum physiologique uniquement, du centre vers l'extérieur. L'eau oxygénée et l'alcool sont contre-indiqués car cytotoxiques." } },
+      { q: "Comment posez-vous les compresses sur la plaie ?", ctx: "La plaie est nettoyée. Vous préparez les compresses stériles.", options: ["On dépose les compresses côté non stérile sur la plaie","On ouvre l'emballage par les bords et on pose la compresse sans toucher la face qui va sur la plaie","On peut toucher la compresse avec les doigts, les gants la protègent","On froisse la compresse pour qu'elle adhère mieux"], correct: 1, explanation: { ok: "Parfait ! On ouvre l'emballage par les bords, sans jamais toucher la face de la compresse en contact avec la plaie. C'est la technique de non-contamination.", ko: "Même avec des gants stériles, ne jamais toucher la face de la compresse qui va sur la plaie. Technique de non-contamination obligatoire." } },
+      { q: "Le pansement est posé. Quelle est votre dernière action ?", ctx: "Vous avez fixé le pansement avec le sparadrap. La mission est presque terminée.", options: ["Partir rapidement, le prochain patient attend","Retirer les gants, éliminer les déchets, se relaver les mains et noter le soin dans le dossier","Demander au patient de vérifier lui-même le pansement","Laisser le matériel usagé sur la table de nuit pour le ménage"], correct: 1, explanation: { ok: "Parfait ! Retrait des gants, élimination DASRI, lavage des mains et traçabilité dans le dossier. La traçabilité est une obligation légale.", ko: "4 étapes obligatoires en fin de soin : retrait des gants, déchets DASRI, lavage des mains et traçabilité dans le dossier patient." } }
+    ]
+  },
+  {
+    id: 1,
+    icon: '🩸',
+    title: 'Prise de sang',
+    desc: 'Réaliser un prélèvement veineux en toute sécurité',
+    patient: { avatar: '👩', name: 'Mme Dupont, 45 ans', info: 'Bilan sanguin de routine prescrit par son médecin traitant' },
+    briefing: 'Mme Dupont est à jeun depuis ce matin. Le médecin a prescrit un bilan biologique complet. Votre rôle : réaliser le prélèvement veineux dans les règles de l\'art.',
+    questions: [
+      { q: "Avant la prise de sang, que vérifiez-vous en premier ?", ctx: "Vous entrez dans le cabinet avec votre matériel. Quelle est votre toute première vérification ?", options: ["Que les tubes sont bien étiquetés au nom du patient","L'identité du patient en lui demandant de décliner ses nom, prénom et date de naissance","Que la veine est bien visible","Que le patient est bien à jeun"], correct: 1, explanation: { ok: "Excellent ! La vérification de l'identité du patient est primordiale avant tout acte. C'est la règle des 5B : Bon patient, Bon médicament, Bonne dose, Bon moment, Bonne voie.", ko: "Toujours vérifier l'identité du patient en lui demandant de décliner ses nom, prénom et date de naissance avant tout acte. C'est la sécurité du patient n°1." } },
+      { q: "Comment posez-vous le garrot ?", ctx: "Vous choisissez le bras de Mme Dupont. Comment placez-vous le garrot ?", options: ["Le plus serré possible pour faire gonfler la veine rapidement","À 7-10 cm au-dessus du site de ponction, serré suffisamment pour bloquer le retour veineux","Au niveau du poignet pour une meilleure accessibilité","Pas besoin de garrot si la veine est visible"], correct: 1, explanation: { ok: "Parfait ! Le garrot se pose 7 à 10 cm au-dessus du point de ponction. Trop serré il bloque le flux artériel et fausse les résultats, pas assez la veine ne se gorge pas.", ko: "Le garrot se place 7 à 10 cm au-dessus du site de ponction. Un garrot trop serré peut fausser les résultats biologiques en modifiant la concentration de certains éléments." } },
+      { q: "Quelle désinfection effectuez-vous sur le site de ponction ?", ctx: "Vous avez repéré la veine. Vous préparez la désinfection cutanée.", options: ["Alcool à 70°, on frotte en cercles concentriques puis on pique immédiatement","Antiseptique (chlorhexidine alcoolique), on applique en cercles du centre vers l'extérieur, on laisse sécher","Sérum physiologique, puis on pique","Pas besoin de désinfecter si la peau semble propre"], correct: 1, explanation: { ok: "Très bien ! Chlorhexidine alcoolique en mouvement spiralé du centre vers l'extérieur, et surtout on laisse sécher (au moins 30 secondes) avant de piquer. Si on ne laisse pas sécher, l'antiseptique n'agit pas.", ko: "Chlorhexidine alcoolique, application en spirale du centre vers l'extérieur, et LAISSER SÉCHER avant de piquer. Le séchage est indispensable pour l'efficacité de l'antiseptique." } },
+      { q: "Dans quel ordre remplissez-vous les tubes de prélèvement ?", ctx: "Vous avez posé l'aiguille. Le sang coule. Vous avez 3 tubes : hémostase (bleu), hématologie (violet) et biochimie (rouge).", options: ["Violet (hématologie), bleu (hémostase), rouge (biochimie)","Bleu (hémostase), rouge (biochimie), violet (hématologie)","Rouge (biochimie), bleu (hémostase), violet (hématologie)","L'ordre n'a pas d'importance"], correct: 1, explanation: { ok: "Parfait ! L'ordre officiel : tube sec ou gel (rouge) en premier si pas d'hémostase, puis hémostase (bleu), puis les autres. L'ordre évite les contaminations croisées entre anticoagulants.", ko: "L'ordre des tubes est précis : hémostase (bleu) en premier car tout anticoagulant résiduel dans l'aiguille fausserait l'hémostase. Puis biochimie (rouge), puis hématologie (violet)." } },
+      { q: "Combien de temps devez-vous maintenir la compression après le prélèvement ?", ctx: "Vous avez retiré l'aiguille. Vous posez une compresse sur le site.", options: ["5 secondes, c'est suffisant","2 à 5 minutes avec une légère pression sans plier le bras","30 secondes en pliant le coude","Pas besoin de comprimer, la veine se referme seule"], correct: 1, explanation: { ok: "Correct ! 2 à 5 minutes de compression avec le bras tendu (pas plié). Plier le bras comprime mal le point de ponction et favorise les hématomes, surtout chez les patients sous anticoagulants.", ko: "2 à 5 minutes de compression, bras tendu. Le bras plié est une idée reçue — cela favorise les hématomes. La compression directe sur le point de ponction est plus efficace." } },
+      { q: "Que faites-vous des tubes après le prélèvement ?", ctx: "Les tubes sont remplis et étiquetés. Comment les préparez-vous pour le laboratoire ?", options: ["On les secoue vigoureusement pour bien mélanger","On les retourne doucement (5 à 8 fois) pour mélanger avec l'anticoagulant selon le tube","On les laisse droits sans les bouger","On les met immédiatement au congélateur"], correct: 1, explanation: { ok: "Parfait ! Les tubes avec anticoagulant se retournent doucement 5 à 8 fois (jamais secoués). Le tube sec ne se retourne pas. Le retournement assure le mélange avec l'anticoagulant.", ko: "Les tubes s'inversent doucement 5 à 8 fois pour mélanger sang et anticoagulant. Les secouer détruit les globules rouges (hémolyse) et fausse les résultats." } },
+      { q: "Comment éliminez-vous l'aiguille après le prélèvement ?", ctx: "Le soin est terminé. Comment gérez-vous l'aiguille usagée ?", options: ["On la recapuchonne avec précaution pour éviter les projections","On la dépose directement dans le container à aiguilles OPCT sans recapuchonner","On la pose sur le plateau pour la jeter plus tard","On la met dans la poubelle ordinaire enveloppée dans la compresse"], correct: 1, explanation: { ok: "Excellent ! L'aiguille s'élimine immédiatement dans le container OPCT (Objets Piquants Coupants Tranchants) SANS recapuchonner. Recapuchonner représente 30% des accidents d'exposition au sang (AES).", ko: "JAMAIS de recapuchonnage ! L'aiguille va directement dans le container OPCT. Recapuchonner est responsable de 30% des AES (Accidents d'Exposition au Sang), un risque majeur pour le soignant." } }
+    ]
+  },
+  {
+    id: 2,
+    icon: '🌡️',
+    title: 'Prise de constantes',
+    desc: 'Mesurer tension, température et saturation',
+    patient: { avatar: '👴', name: 'M. Martin, 72 ans', info: 'Surveillance post-opératoire J2 — Opération de la hanche' },
+    briefing: 'M. Martin est à J2 de son opération. Le médecin prescrit une surveillance rapprochée. Votre rôle : réaliser une prise de constantes complète et interpréter les résultats.',
+    questions: [
+      { q: "Dans quel ordre réalisez-vous les constantes ?", ctx: "Vous entrez dans la chambre avec votre matériel. Par quelle constante commencez-vous ?", options: ["Température, puis tension, puis saturation","Saturation, puis tension, puis température","L'ordre n'a pas d'importance","Tension en premier car c'est la plus importante"], correct: 0, explanation: { ok: "Bien ! On commence généralement par la température (non invasive, non stressante), puis la saturation (rapide), puis la tension artérielle. L'objectif est de ne pas stresser le patient avant la tension.", ko: "L'ordre recommandé : température, saturation, puis tension artérielle. Prendre la tension en dernier évite que le stress des autres gestes ne fausse la mesure tensionnelle." } },
+      { q: "Comment prenez-vous correctement la tension artérielle ?", ctx: "Vous posez le brassard sur le bras de M. Martin. Quelles sont les conditions correctes ?", options: ["Le patient peut être debout, bras pendant le long du corps","Patient assis ou allongé depuis au moins 5 minutes, bras nu au niveau du cœur, dos soutenu","On peut prendre la tension immédiatement à l'arrivée du patient","On serre le brassard le plus fort possible pour une meilleure mesure"], correct: 1, explanation: { ok: "Parfait ! Les conditions idéales : patient assis/allongé depuis 5 min, bras nu, bras au niveau du cœur, dos soutenu, sans parler pendant la mesure. Ces conditions garantissent une mesure fiable.", ko: "Conditions obligatoires : patient au repos depuis 5 min, bras nu, bras positionné au niveau du cœur, dos soutenu. Un bras trop bas surestime la tension, trop haut la sous-estime." } },
+      { q: "Les valeurs tensionnelles de M. Martin sont 85/50 mmHg. Quelle est votre réaction ?", ctx: "La mesure affiche 85/50 mmHg. M. Martin dit se sentir un peu faible et étourdi.", options: ["C'est normal pour un opéré, on continue la surveillance","C'est une hypotension artérielle — on allonge le patient, on prend les autres constantes et on appelle le médecin immédiatement","On attend la prochaine prise dans 4 heures","On lui propose un verre d'eau et on revient dans une heure"], correct: 1, explanation: { ok: "Excellent réflexe ! 85/50 mmHg est une hypotension sévère (normale > 90/60). À J2 post-op, cela peut signer un saignement interne, une déshydratation ou un choc. Allonger, surveiller, alerter.", ko: "85/50 mmHg = hypotension sévère (normale ≥ 90/60 mmHg). À J2 post-opératoire, c'est une urgence potentielle (choc hémorragique possible). Allonger le patient et alerter le médecin immédiatement." } },
+      { q: "Vous mesurez la saturation en oxygène (SpO2). Quelle valeur est normale ?", ctx: "Vous placez le saturomètre sur le doigt de M. Martin. L'appareil affiche 94%.", options: ["94% c'est normal, pas de souci","La normale est ≥ 95% chez un adulte sain — 94% doit être signalé au médecin","La normale est 80%, 94% est donc excellent","Toute valeur au-dessus de 90% est acceptable"], correct: 1, explanation: { ok: "Parfait ! La SpO2 normale est ≥ 95% chez un adulte sain, ≥ 92% chez un patient BPCO. À 94%, on surveille et on signale, surtout en post-opératoire où cela peut indiquer une complication respiratoire.", ko: "SpO2 normale : ≥ 95% chez l'adulte sain. 94% à J2 post-op doit être signalé. En dessous de 90% c'est une urgence. À 94% on surveille attentivement et on informe le médecin." } },
+      { q: "La température de M. Martin est de 38,6°C. Quelle est votre interprétation ?", ctx: "Le thermomètre affiche 38,6°C. C'est la 2ème mesure consécutive au-dessus de 38°C.", options: ["C'est normal à J2 d'une opération, pas d'inquiétude","C'est une fièvre (> 38°C) — à J2 post-op elle peut signer une infection, on note, on informe le médecin et on surveille","38,6°C est une hyperthermie grave, appel du SAMU immédiat","On donne de l'aspirine sans en référer au médecin"], correct: 1, explanation: { ok: "Bien ! Fièvre = T° > 38°C. À J2 post-op, une fièvre peut être réactionnelle (normale) ou signer une infection du site opératoire, une phlébite, une pneumopathie. Le médecin doit évaluer.", ko: "T° > 38°C = fièvre. À J2 post-opératoire, toute fièvre doit être signalée au médecin car elle peut indiquer une complication (infection de plaie, phlébite, pneumopathie d'inhalation)." } },
+      { q: "Comment notez-vous les constantes relevées ?", ctx: "Vous avez toutes vos mesures. Comment en assurez-vous la traçabilité ?", options: ["On les mémorise et on les note plus tard quand on a le temps","On les note immédiatement sur la feuille de surveillance et dans le dossier informatisé en y ajoutant l'heure et notre signature","On les dit verbalement à notre collègue qui les note","On ne les note que si elles sont anormales"], correct: 1, explanation: { ok: "Parfait ! Traçabilité immédiate, complète, avec l'heure et la signature. C'est une obligation légale et un outil de surveillance essentiel pour détecter les tendances d'évolution.", ko: "La traçabilité est une obligation légale : noter immédiatement sur la feuille de surveillance ET le dossier, avec l'heure et sa signature. Une constante non notée est une constante inexistante légalement." } },
+      { q: "Globalement, quel est le rôle principal de la prise de constantes ?", ctx: "Fin de votre surveillance. Quelle est la vraie valeur des constantes dans le suivi du patient ?", options: ["Simplement remplir le dossier pour la paperasse","Détecter précocement toute dégradation de l'état du patient avant qu'elle ne devienne critique","C'est une formalité sans réel intérêt clinique","Uniquement pour rassurer le patient"], correct: 1, explanation: { ok: "Exactement ! Les constantes sont des sentinelles : elles permettent de détecter une dégradation AVANT que le patient ne soit en danger immédiat. C'est tout l'art de la surveillance infirmière.", ko: "Les constantes sont des indicateurs cliniques précieux. Leur rôle est de détecter précocement toute dégradation — c'est la surveillance infirmière qui sauve des vies par anticipation." } }
+    ]
+  },
+  {
+    id: 3,
+    icon: '🫀',
+    title: 'Réanimation (RCP)',
+    desc: 'Réanimation cardio-pulmonaire — Urgence vitale',
+    patient: { avatar: '🚨', name: 'Arrêt cardio-respiratoire', info: 'Situation d\'urgence — Chaque seconde compte' },
+    briefing: 'En passant dans le couloir, vous trouvez un homme d\'une cinquantaine d\'années effondré, inconscient. Vous êtes seul(e). Votre rôle : appliquer la chaîne de survie.',
+    questions: [
+      { q: "Un homme est effondré devant vous. Quelle est votre toute première action ?", ctx: "Vous êtes dans le couloir. Un homme d'environ 50 ans est à terre, immobile.", options: ["Commencer immédiatement les compressions thoraciques","Sécuriser la zone et vérifier l'état de conscience en lui tapotant les épaules et en appelant fort","Appeler le 15 (SAMU) avant toute chose","Courir chercher du secours"], correct: 1, explanation: { ok: "Parfait ! On sécurise d'abord la zone (danger environnant), puis on évalue la conscience en stimulant les épaules et en appelant fort : 'Monsieur, vous m'entendez ?' Jamais de compressions sans évaluation préalable.", ko: "Avant tout : sécuriser la zone (ne pas se mettre en danger), puis évaluer la conscience en tapotant les épaules et en appelant la personne. Agir sans évaluer peut mettre le sauveteur en danger." } },
+      { q: "La personne ne répond pas et ne respire pas. Que faites-vous dans les 10 secondes ?", ctx: "Le patient est inconscient, ne réagit pas. Vous regardez sa poitrine : elle ne se soulève pas.", options: ["Mettre la personne en Position Latérale de Sécurité (PLS)","Appeler le 15/SAMU (ou 112) immédiatement et commencer la RCP","Attendre l'arrivée d'un collègue plus qualifié","Chercher le défibrillateur avant tout autre geste"], correct: 1, explanation: { ok: "Excellent ! Inconscient + absence de respiration = arrêt cardio-respiratoire présumé. On appelle le 15 (ou fait appeler) ET on débute la RCP immédiatement. Chaque minute sans RCP = 10% de chances de survie en moins.", ko: "Inconscient + ne respire pas = RCP immédiate. Appeler le 15 ET débuter les compressions thoraciques. Chaque minute perdue sans RCP diminue les chances de survie de 10%. Ne pas attendre." } },
+      { q: "Comment réalisez-vous les compressions thoraciques ?", ctx: "Vous commencez la RCP. Comment placez-vous vos mains et quel est le rythme ?", options: ["Une main sur le ventre, légères pressions, 60 fois/minute","Deux mains superposées au centre du thorax (moitié inférieure du sternum), 30 compressions profondes (5-6 cm) à 100-120/min","Une main sur le côté gauche de la poitrine, 50 compressions/minute","Compressions légères pour ne pas blesser les côtes, 80/minute"], correct: 1, explanation: { ok: "Parfait ! Protocole exact : talon des mains au centre du sternum, bras tendus, 30 compressions de 5-6 cm de profondeur à 100-120/min. La profondeur et la fréquence sont essentielles à l'efficacité.", ko: "30 compressions, deux mains superposées au centre du sternum, profondeur 5-6 cm, fréquence 100-120/min, bras tendus et perpendiculaires. Des compressions trop légères sont inefficaces." } },
+      { q: "Quelle est la séquence complète de la RCP de base ?", ctx: "Vous êtes en train de faire les compressions. Quel est le rythme compressions/insufflations ?", options: ["15 compressions / 1 insufflation","30 compressions / 2 insufflations (ou 30/0 si on ne maîtrise pas le bouche-à-bouche)","50 compressions / 5 insufflations","20 compressions / 3 insufflations"], correct: 1, explanation: { ok: "Exact ! 30 compressions / 2 insufflations est le protocole standard. Si le sauveteur ne maîtrise pas le bouche-à-bouche ou répugne à le faire, les compressions seules (30/0) restent efficaces.", ko: "Le ratio est 30 compressions pour 2 insufflations. Si impossible ou non maîtrisé, les compressions seules (sans insufflation) maintiennent une circulation minimale et sont préférables à l'inaction." } },
+      { q: "Un défibrillateur (DEA) est disponible à 10 mètres. Que faites-vous ?", ctx: "Un collègue passe dans le couloir. Il y a un DEA accroché au mur à 10m.", options: ["On continue la RCP, le DEA c'est réservé aux médecins","On demande au collègue d'aller chercher le DEA pendant qu'on continue la RCP — puis on l'utilise dès qu'il arrive","On arrête la RCP pour aller chercher le DEA soi-même","Le DEA n'est utile qu'après l'arrivée du SAMU"], correct: 1, explanation: { ok: "Parfait ! On ne cesse jamais la RCP. On envoie le collègue chercher le DEA. Le DEA est utilisable par tout le monde, il guide vocalement. Il double les chances de survie en cas de fibrillation ventriculaire.", ko: "Ne jamais interrompre la RCP. Envoyer quelqu'un chercher le DEA. Le DEA est un appareil grand public qui guide vocalement — tout le monde peut l'utiliser. Il est vital en cas de fibrillation ventriculaire." } },
+      { q: "Comment utilise-t-on le DEA ?", ctx: "Votre collègue revient avec le DEA. Comment le mettez-vous en marche ?", options: ["On l'allume, on place les électrodes comme indiqué sur les schémas, on suit les instructions vocales et on ne touche plus le patient pendant l'analyse et le choc","On pose les électrodes pendant qu'on continue les compressions","On l'utilise uniquement si le patient a repris conscience","On pose les électrodes uniquement sur le côté gauche du thorax"], correct: 0, explanation: { ok: "Excellent ! On allume, on colle les électrodes (schéma sur l'appareil), on suit les instructions vocales. PERSONNE ne touche le patient pendant l'analyse et pendant le choc. Le DEA décide seul si un choc est nécessaire.", ko: "DEA : allumer → électrodes selon schéma → suivre instructions vocales → NE PLUS TOUCHER le patient pendant l'analyse et le choc. L'appareil analyse lui-même et décide si un choc est nécessaire." } },
+      { q: "Le SAMU arrive. Comment transmettez-vous la situation ?", ctx: "Les secours professionnels arrivent. Vous devez leur faire une transmission.", options: ["On s'écarte sans rien dire, les professionnels savent faire","On leur transmet : heure de découverte, durée de RCP, nombre de chocs DEA, médicaments connus du patient si possible","On leur dit juste que la personne est inconsciente","On continue la RCP sans s'arrêter pour leur parler"], correct: 1, explanation: { ok: "Parfait ! La transmission SAMU inclut : heure de découverte, durée de la RCP, nombre de chocs DEA délivrés, tout antécédent médical connu. Ces informations sont précieuses pour la suite de la prise en charge.", ko: "Transmission essentielle : heure de découverte de l'ACR, durée de la RCP réalisée, nombre de chocs DEA, antécédents connus. Ces infos guident la prise en charge médicale avancée." } }
+    ]
+  }
+];
+
+// ========== STATE ==========
+let selectedChar = null;
+let charName = '';
+let currentScenarioId = null;
+let currentQ = 0;
+let correctCount = 0;
+let wrongCount = 0;
+let results = [];
+let completedScenarios = {};
+let totalScore = 0;
+
+// ========== FUNCTIONS ==========
+function selectChar(type) {
+  selectedChar = type;
+  document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('char-' + type).classList.add('selected');
+  document.getElementById('btn-start').disabled = false;
+  charName = type === 'f' ? 'Sophie' : 'Lucas';
+}
+
+function goToMenu() {
+  renderMenu();
+  showScreen('screen-menu');
+}
+
+function renderMenu() {
+  document.getElementById('menu-welcome-name').textContent = 'Bienvenue, ' + charName;
+  document.getElementById('gs-done').textContent = Object.keys(completedScenarios).length;
+  document.getElementById('gs-total').textContent = totalScore;
+
+  const menu = document.getElementById('scenario-menu');
+  menu.innerHTML = '';
+  scenarios.forEach((s, i) => {
+    const done = completedScenarios[s.id];
+    const locked = i > 0 && !completedScenarios[scenarios[i-1].id];
+    const item = document.createElement('div');
+    item.className = 'scenario-item' + (locked ? ' locked' : '') + (done ? ' completed' : '');
+    item.innerHTML = `
+      <div class="scenario-icon">${s.icon}</div>
+      <div class="scenario-info">
+        <div class="scenario-title">${i+1}. ${s.title}</div>
+        <div class="scenario-desc">${s.desc}</div>
+      </div>
+      <div class="scenario-badge-num ${done ? 'done' : locked ? 'locked-badge' : ''}">${done ? '✓ ' + done + 'pts' : locked ? '🔒' : 'Jouer'}</div>
+    `;
+    if (!locked) item.onclick = () => startScenario(s.id);
+    menu.appendChild(item);
+  });
+}
+
+function startScenario(id) {
+  currentScenarioId = id;
+  currentQ = 0;
+  correctCount = 0;
+  wrongCount = 0;
+  results = [];
+  const s = scenarios[id];
+  const intro = document.getElementById('intro-card');
+  intro.innerHTML = `
+    <div class="scenario-badge">${s.icon} Scénario ${id+1} — ${s.title}</div>
+    <div class="card-title">Briefing de mission</div>
+    <div class="card-sub">Vous prenez en charge votre patient.</div>
+    <div class="patient-info">
+      <div class="patient-avatar">${s.patient.avatar}</div>
+      <div class="patient-detail">
+        <strong>${s.patient.name}</strong>
+        <span>${s.patient.info}</span>
+      </div>
+    </div>
+    <div class="card-sub">${s.briefing}</div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goToMenu()">← Menu</button>
+      <button class="btn btn-primary" onclick="showQuestion()">🩺 Débuter le soin</button>
+    </div>
+  `;
+  showScreen('screen-intro');
+}
+
+function showQuestion() {
+  showScreen('screen-question');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const s = scenarios[currentScenarioId];
+  const q = s.questions[currentQ];
+  const total = s.questions.length;
+
+  document.getElementById('scenario-label-q').textContent = s.icon + ' ' + s.title;
+  document.getElementById('step-num').textContent = (currentQ + 1) + ' / ' + total;
+  document.getElementById('progress-fill').style.width = (currentQ / total * 100) + '%';
+  document.getElementById('q-text').textContent = q.q;
+  document.getElementById('q-context').textContent = q.ctx;
+
+  const grid = document.getElementById('options-grid');
+  grid.innerHTML = '';
+  const letters = ['A', 'B', 'C', 'D'];
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.innerHTML = `<span class="option-letter">${letters[i]}</span>${opt}`;
+    btn.onclick = () => selectAnswer(i);
+    grid.appendChild(btn);
+  });
+
+  document.getElementById('feedback-box').className = 'feedback-box';
+  document.getElementById('btn-next').style.display = 'none';
+}
+
+function selectAnswer(index) {
+  const s = scenarios[currentScenarioId];
+  const q = s.questions[currentQ];
+  const buttons = document.querySelectorAll('.option-btn');
+  buttons.forEach(b => b.disabled = true);
+  const isCorrect = index === q.correct;
+  if (isCorrect) {
+    buttons[index].classList.add('correct');
+    correctCount++;
+    results.push({ ok: true });
+  } else {
+    buttons[index].classList.add('wrong');
+    buttons[q.correct].classList.add('correct');
+    wrongCount++;
+    results.push({ ok: false });
+  }
+  const fb = document.getElementById('feedback-box');
+  const fbt = document.getElementById('feedback-title');
+  const fbtxt = document.getElementById('feedback-text');
+  fb.className = 'feedback-box show ' + (isCorrect ? 'correct-fb' : 'wrong-fb');
+  fbt.innerHTML = isCorrect ? '✅ Bonne réponse !' : '❌ Pas tout à fait…';
+  fbtxt.textContent = isCorrect ? q.explanation.ok : q.explanation.ko;
+  document.getElementById('btn-next').style.display = 'block';
+}
+
+function nextQuestion() {
+  const s = scenarios[currentScenarioId];
+  currentQ++;
+  if (currentQ >= s.questions.length) {
+    showResults();
+  } else {
+    renderQuestion();
+  }
+}
+
+function showResults() {
+  showScreen('screen-result');
+  const s = scenarios[currentScenarioId];
+  const score = Math.round((correctCount / s.questions.length) * 100);
+
+  if (!completedScenarios[currentScenarioId] || completedScenarios[currentScenarioId] < score) {
+    if (completedScenarios[currentScenarioId]) totalScore -= completedScenarios[currentScenarioId];
+    completedScenarios[currentScenarioId] = score;
+    totalScore += score;
+  }
+
+  document.getElementById('res-correct').textContent = correctCount;
+  document.getElementById('res-wrong').textContent = wrongCount;
+  document.getElementById('res-score').textContent = score;
+
+  const medal = document.getElementById('medal-zone');
+  let icon, title, sub;
+  const scenarioNames = ['pansement simple', 'prise de sang', 'prise de constantes', 'réanimation'];
+  if (score === 100) { icon = '🏆'; title = 'Parfait, ' + charName + ' !'; sub = 'Score maximal ! Vous maîtrisez le ' + scenarioNames[currentScenarioId] + ' à la perfection.'; }
+  else if (score >= 70) { icon = '🥇'; title = 'Très bien, ' + charName + ' !'; sub = 'Bon résultat sur le ' + scenarioNames[currentScenarioId] + ' ! Quelques points à revoir.'; }
+  else if (score >= 50) { icon = '🥈'; title = 'Peut mieux faire, ' + charName; sub = 'Des bases solides sur le ' + scenarioNames[currentScenarioId] + ', mais certaines étapes clés méritent d\'être révisées.'; }
+  else { icon = '📚'; title = 'À revoir, ' + charName; sub = 'Rejouez ce scénario pour consolider les bons gestes du ' + scenarioNames[currentScenarioId] + '.'; }
+
+  medal.innerHTML = `<div class="medal-icon">${icon}</div><div class="medal-title">${title}</div><div class="medal-sub">${sub}</div>`;
+
+  const recap = document.getElementById('steps-recap');
+  recap.innerHTML = results.map((r, i) =>
+    `<div class="recap-item">
+      <div class="recap-dot ${r.ok ? 'ok' : 'ko'}">${r.ok ? '✓' : '✗'}</div>
+      <span>Étape ${i+1} — ${r.ok ? '<span style="color:var(--success)">Réussie</span>' : '<span style="color:var(--danger)">Manquée</span>'}</span>
+    </div>`
+  ).join('');
+}
+
+function replayScenario() {
+  startScenario(currentScenarioId);
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>
